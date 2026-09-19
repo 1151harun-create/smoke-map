@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>煙の地図</title>
+
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"
+/>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, "Noto Sans JP", sans-serif;
+      background: #ffffff;
+      color: #111111;
+    }
+
+    header {
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid #111;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 4px;
+    }
+
+    .sub {
+      margin-top: 7px;
+      font-size: 13px;
+      color: #666;
+    }
+
+    .search {
+      padding: 18px 20px 10px;
+    }
+
+    .search input {
+      width: 100%;
+      height: 52px;
+      padding: 0 18px;
+      border: 1px solid #111;
+      border-radius: 0;
+      font-size: 16px;
+    }
+
+    .filters {
+      display: flex;
+      gap: 8px;
+      padding: 4px 20px 16px;
+      overflow-x: auto;
+    }
+
+    .filters button {
+      white-space: nowrap;
+      background: white;
+      border: 1px solid #111;
+      padding: 12px 16px;
+      font-size: 14px;
+    }
+
+    .filters .active {
+      background: #111;
+      color: white;
+    }
+
+    .map {
+      margin: 0 20px;
+      height: 430px;
+      background:
+        linear-gradient(90deg, #eee 1px, transparent 1px),
+        linear-gradient(#eee 1px, transparent 1px);
+      background-size: 38px 38px;
+      border: 1px solid #111;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .pin {
+      width: 54px;
+      height: 54px;
+      background: #111;
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .location {
+      margin: 16px 20px;
+      width: calc(100% - 40px);
+      height: 56px;
+      background: #111;
+      color: white;
+      border: 0;
+      font-size: 17px;
+      font-weight: bold;
+    }
+    .route-button {
+  width: 100%;
+  margin-top: 12px;
+  padding: 12px;
+  background: #111;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.route-button:hover {
+  background: #333;
+}
+#navigation-info {
+  display: none;
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  z-index: 1000;
+  background: #111;
+  color: white;
+  padding: 14px 16px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: bold;
+}
+
+#route-distance {
+  display: block;
+  margin-top: 5px;
+  font-size: 13px;
+  font-weight: normal;
+}
+
+.add-shop {
+  margin: 0 20px 16px;
+  width: calc(100% - 40px);
+  height: 48px;
+  background: white;
+  color: #111;
+  border: 1px solid #111;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+#add-shop-form {
+  display: none;
+  margin: 16px 20px;
+  padding: 20px;
+  border: 1px solid #111;
+  background: white;
+}
+
+#add-shop-form h2 {
+  margin: 0 0 16px;
+  font-size: 20px;
+}
+
+#add-shop-form input,
+#add-shop-form select {
+  width: 100%;
+  height: 46px;
+  margin-bottom: 10px;
+  padding: 0 12px;
+  border: 1px solid #111;
+  font-size: 15px;
+}
+
+#add-shop-form button {
+  width: 100%;
+  height: 46px;
+  margin-top: 6px;
+  border: 1px solid #111;
+  background: #111;
+  color: white;
+  font-weight: bold;
+}
+
+#add-shop-form button:last-child {
+  background: white;
+  color: #111;
+}
+.premium {
+  margin: 28px 20px;
+  padding: 26px 22px;
+  background: #111;
+  color: white;
+  border: 1px solid #111;
+}
+
+.premium-label {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 6px 10px;
+  background: white;
+  color: #111;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.premium h2 {
+  margin: 0 0 12px;
+  font-size: 22px;
+  letter-spacing: 2px;
+}
+
+.premium p {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.premium-feature {
+  padding: 15px;
+  border: 1px solid #555;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.premium-note {
+  margin: 14px 0 0 !important;
+  color: #aaa;
+  font-size: 12px !important;
+}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body>
+
+  <header>
+    <h1>煙の地図</h1>
+    <div class="sub">SMOKING PLACE MAP</div>
+  </header>
+
+<div class="search">
+  <input
+    type="text"
+    id="shop-search"
+    placeholder="店名・住所から探す"
+  >
+</div>
+
+<div id="search-results"></div>
+
+<div class="filters">
+
+  <button
+    class="active"
+    onclick="setFilter('category', 'すべて', this)"
+  >
+    すべて
+  </button>
+
+  <button
+    onclick="setFilter('open', '営業中', this)"
+  >
+    🟢 営業中
+  </button>
+
+  <button
+    onclick="setFilter('cigarette', '紙たばこOK', this)"
+  >
+    🚬 紙たばこOK
+  </button>
+
+  <button
+    onclick="setFilter('heated', '加熱式OK', this)"
+  >
+    🔥 加熱式OK
+  </button>
+
+  <button
+    onclick="setFilter('smoking', '全席喫煙可', this)"
+  >
+    全席喫煙可
+  </button>
+
+  <button
+    onclick="setFilter('smoking', '喫煙室あり', this)"
+  >
+    喫煙室あり
+  </button>
+
+  <button
+    onclick="setFilter('smoking', '加熱式のみ', this)"
+  >
+    加熱式のみ
+  </button>
+
+  <button
+    onclick="setFilter('smoking', '店外喫煙所', this)"
+  >
+    店外喫煙所
+  </button>
+
+  <button
+    onclick="setFilter('smoking', '分煙', this)"
+  >
+    分煙
+  </button>
+
+  <button
+    onclick="setFilter('category', '居酒屋', this)"
+  >
+    居酒屋
+  </button>
+
+  <button
+    onclick="setFilter('category', '喫茶店', this)"
+  >
+    喫茶店
+  </button>
+
+  <button
+    onclick="setFilter('category', 'カフェ', this)"
+  >
+    カフェ
+  </button>
+
+</div>
+
+<div class="map" id="map">
+  <div id="navigation-info">
+    🚶 ナビ中
+    <span id="route-distance">ルートを計算中...</span>
+  </div>
+</div>
+<button class="location" onclick="goToCurrentLocation()">現在地から探す</button>
+
+<section class="premium">
+  <div class="premium-label">COMING SOON</div>
+
+  <h2>煙の地図 PREMIUM</h2>
+
+  <p>
+    もっと便利に、喫煙できるお店を探そう。
+  </p>
+
+  <div class="premium-feature">
+    🚬 「このお店を追加して！」リクエスト
+  </div>
+
+  <p class="premium-note">
+    PREMIUM限定機能を今後追加予定。
+  </p>
+</section>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+<script>
+const SUPABASE_URL = "https://oztvvxsmsnwwussuryfd.supabase.co";
+
+const SUPABASE_KEY = "sb_publishable_9b2QtGHwNb_x1HK9SxGCtQ_1hh1NEbe";
+
+const supabaseClient = supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+  const map = L.map('map').setView([35.6812, 139.7671], 13);
+
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+ let shops = [];
+
+async function loadShops() {
+  const { data, error } = await supabaseClient
+    .from("shops")
+    .select("*");
+
+  if (error) {
+    console.error("店舗データの取得に失敗しました:", error);
+    return;
+  }
+
+  shops = data;
+  showShops();
+}
+
+loadShops();
+
+let currentLocationMarker = null;
+let currentLat = null;
+let currentLng = null;
+function goToCurrentLocation() {
+    if (currentLat !== null && currentLng !== null) {
+    map.setView([currentLat, currentLng], 16);
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    alert("この端末では現在地を取得できません。");
+    return;
+  }
+
+  navigator.geolocation.watchPosition(
+    function(position) {
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+
+      currentLat = lat;
+      currentLng = lng;
+
+      if (navigationMode && navigationTarget) {
+  updateNavigationRoute();
+}
+
+      if (!currentLocationMarker) {
+  map.setView([lat, lng], 16);
+}
+
+if (currentLocationMarker) {
+  currentLocationMarker.setLatLng([lat, lng]);
+} else {
+  currentLocationMarker = L.marker([lat, lng])
+    .addTo(map)
+    .bindPopup("📍 現在地")
+    .openPopup();
+}
+
+if (navigationMode) {
+  map.panTo([lat, lng]);
+}
+    },
+    function() {
+      alert("現在地を取得できませんでした。位置情報を許可してください。");
+},
+{
+  enableHighAccuracy: true,
+  timeout: 10000,
+  maximumAge: 0
+}
+);
+}
+let routingControl = null;
+let navigationMode = false;
+let navigationTarget = null;
+
+function showRoute(shopLat, shopLng, shopName) {
+  navigationMode = true;
+
+  navigationTarget = {
+  lat: shopLat,
+  lng: shopLng
+};
+
+  document.getElementById("navigation-info").style.display = "block";
+  document.getElementById("navigation-info").firstChild.textContent =
+  `🚶 ${shopName}までナビ中`;
+
+  if (currentLat === null || currentLng === null) {
+    alert("先に「現在地から探す」を押してください！");
+    return;
+  }
+
+  if (routingControl) {
+    map.removeControl(routingControl);
+  }
+
+  routingControl = L.Routing.control({
+  waypoints: [
+    L.latLng(currentLat, currentLng),
+    L.latLng(shopLat, shopLng)
+  ],
+  routeWhileDragging: false,
+  addWaypoints: false,
+  draggableWaypoints: false,
+  fitSelectedRoutes: true,
+  showAlternatives: false,
+  show: false
+})
+.on("routesfound", function(e) {
+  const route = e.routes[0];
+  const instructions = route.instructions;
+  const distance = route.summary.totalDistance;
+
+  if (distance <= 30) {
+    document.getElementById("route-distance").textContent =
+      "🎉 到着しました！";
+    navigationMode = false;
+    return;
+  }
+
+  let distanceText;
+
+  if (distance < 1000) {
+    distanceText = `あと ${Math.round(distance)}m`;
+  } else {
+    distanceText = `あと ${(distance / 1000).toFixed(1)}km`;
+  }
+
+  if (instructions && instructions.length > 0) {
+    const nextInstruction = instructions[0];
+
+    document.getElementById("route-distance").textContent =
+      `${nextInstruction.text} ・ ${distanceText}`;
+  } else {
+    document.getElementById("route-distance").textContent =
+      distanceText;
+  }
+})
+.addTo(map);
+
+}
+
+let lastRouteUpdate = 0;
+
+function updateNavigationRoute() {
+  const now = Date.now();
+
+  // 10秒以内なら再計算しない
+  if (now - lastRouteUpdate < 10000) {
+    return;
+  }
+
+  lastRouteUpdate = now;
+
+  if (!navigationTarget || currentLat === null || currentLng === null) {
+    return;
+  }
+
+  if (routingControl) {
+    map.removeControl(routingControl);
+  }
+
+  routingControl = L.Routing.control({
+    waypoints: [
+      L.latLng(currentLat, currentLng),
+      L.latLng(navigationTarget.lat, navigationTarget.lng)
+    ],
+    routeWhileDragging: false,
+    addWaypoints: false,
+    draggableWaypoints: false,
+    fitSelectedRoutes: false,
+    showAlternatives: false,
+    show: false
+  })
+  .on("routesfound", function(e) {
+    const route = e.routes[0];
+    const instructions = route.instructions;
+    const distance = route.summary.totalDistance;
+
+    if (distance < 1000) {
+      document.getElementById("route-distance").textContent =
+        `あと ${Math.round(distance)}m`;
+    } else {
+      document.getElementById("route-distance").textContent =
+        `あと ${(distance / 1000).toFixed(1)}km`;
+    }
+  })
+  .addTo(map);
+}
+
+let markers = [];
+
+let currentFilterType = "category";
+let currentFilterValue = "すべて";
+
+function setFilter(type, value, button) {
+  currentFilterType = type;
+  currentFilterValue = value;
+
+  document.querySelectorAll(".filters button").forEach(btn => {
+    btn.classList.remove("active");
+  });
+
+  button.classList.add("active");
+
+  showShops();
+}
+
+function isShopOpen(shop) {
+  if (!shop.opening_time || !shop.closing_time) {
+    return false;
+  }
+
+  const now = new Date();
+
+  const currentMinutes =
+    now.getHours() * 60 + now.getMinutes();
+
+  const [openHour, openMinute] =
+    shop.opening_time.split(":").map(Number);
+
+  const [closeHour, closeMinute] =
+    shop.closing_time.split(":").map(Number);
+
+  const openMinutes =
+    openHour * 60 + openMinute;
+
+  const closeMinutes =
+    closeHour * 60 + closeMinute;
+
+  // 日付をまたがない営業時間
+  if (openMinutes < closeMinutes) {
+    return (
+      currentMinutes >= openMinutes &&
+      currentMinutes < closeMinutes
+    );
+  }
+
+  // 例：18:00〜02:00
+  return (
+    currentMinutes >= openMinutes ||
+    currentMinutes < closeMinutes
+  );
+}
+
+function showShops() {
+
+  markers.forEach(marker => {
+    map.removeLayer(marker);
+  });
+
+  markers = [];
+
+  const filteredShops = shops.filter(shop => {
+
+    if (currentFilterValue === "すべて") {
+      return true;
+    }
+
+    if (currentFilterType === "cigarette") {
+      return shop.cigarette === true;
+    }
+
+    if (currentFilterType === "heated") {
+      return shop.heated === true;
+    }
+
+    if (currentFilterType === "open") {
+  return isShopOpen(shop);
+}
+
+    if (currentFilterType === "smoking") {
+      return shop.smoking === currentFilterValue;
+    }
+
+    if (currentFilterType === "category") {
+      return shop.category === currentFilterValue;
+    }
+
+    return true;
+  });
+
+  filteredShops.forEach(shop => {
+    const marker = L.marker([shop.lat, shop.lng])
+      .addTo(map)
+      .bindPopup(`
+        <div style="min-width: 190px;">
+          <strong style="font-size: 17px;">${shop.name}</strong>
+<div style="
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+">
+  <span style="
+    border: 1px solid #111;
+    padding: 6px 8px;
+    font-size: 12px;
+    font-weight: bold;
+  ">
+    ${shop.cigarette ? "🚬 紙たばこOK" : "🚭 紙たばこNG"}
+  </span>
+
+  <span style="
+    border: 1px solid #111;
+    padding: 6px 8px;
+    font-size: 12px;
+    font-weight: bold;
+  ">
+    ${shop.heated ? "🔥 加熱式OK" : "加熱式NG"}
+  </span>
+
+  <span style="
+    border: 1px solid #111;
+    padding: 6px 8px;
+    font-size: 12px;
+    font-weight: bold;
+  ">
+    🚬 ${shop.smoking || "喫煙条件未登録"}
+  </span>
+</div>
+          <p>📍 ${shop.address || "住所未登録"}</p>
+<p>🏷️ ${shop.category || "カテゴリ未登録"}</p>
+          <small>最終確認：${shop.confirmed}</small>
+          <p style="font-weight: bold;">
+  ${
+    !shop.opening_time || !shop.closing_time
+      ? "⚪ 営業時間未登録"
+      : isShopOpen(shop)
+        ? "🟢 営業中"
+        : "⚫ 営業時間外"
+  }
+</p>
+          <p>
+  🕒 営業時間：
+  ${
+    shop.opening_time && shop.closing_time
+      ? `${shop.opening_time} 〜 ${shop.closing_time}`
+      : "未登録"
+  }
+</p>
+          <button class="route-button" onclick="showRoute(${shop.lat}, ${shop.lng}, '${shop.name}')">🚶 ここまでの道を見る</button>
+        </div>
+      `);
+
+    markers.push(marker);
+  });
+}
+const searchInput = document.getElementById("shop-search");
+const searchResults = document.getElementById("search-results");
+
+function normalizeSearchText(text) {
+  return String(text || "")
+    .normalize("NFKC")
+    .replace(/\s+/g, "")
+    .toLowerCase();
+}
+
+searchInput.addEventListener("input", function () {
+  const keyword = normalizeSearchText(searchInput.value);
+
+  if (keyword === "") {
+    searchResults.innerHTML = "";
+    return;
+  }
+
+  const results = shops.filter(shop => {
+    const name = normalizeSearchText(shop.name);
+    const address = normalizeSearchText(shop.address);
+
+    return (
+      name.includes(keyword) ||
+      address.includes(keyword)
+    );
+  });
+
+  if (results.length === 0) {
+    searchResults.innerHTML = `
+      <div style="padding: 12px 20px;">
+        該当する店舗がありません
+      </div>
+    `;
+    return;
+  }
+
+  searchResults.innerHTML = results.map(shop => `
+    <div
+      onclick="goToShop(${shop.id})"
+      style="
+        padding: 14px 20px;
+        border-bottom: 1px solid #ddd;
+        background: white;
+        cursor: pointer;
+      "
+    >
+      <strong>${shop.name}</strong>
+      <div style="margin-top: 4px; font-size: 13px; color: #666;">
+        ${shop.address}
+      </div>
+    </div>
+  `).join("");
+});
+
+function goToShop(id) {
+  const shop = shops.find(shop => shop.id === id);
+
+  if (!shop) {
+    return;
+  }
+
+  map.setView([shop.lat, shop.lng], 17);
+
+  const marker = markers.find(marker => {
+    const position = marker.getLatLng();
+
+    return (
+      position.lat === Number(shop.lat) &&
+      position.lng === Number(shop.lng)
+    );
+  });
+
+  if (marker) {
+    marker.openPopup();
+  }
+
+  searchInput.value = "";
+  searchResults.innerHTML = "";
+}
+</script>
+
+</body>
+</html>
